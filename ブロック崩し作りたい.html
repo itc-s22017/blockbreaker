@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+
+    <style>
+      #canvas {
+        /* background-color: red; */
+        border: 3px solid #ddd;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas" width="700" height="500"></canvas>
+    <img
+      src="images/star.png"
+      width="50px"
+      height="50px"
+      style="display: none"
+      id="star"
+    />
+
+    <script>
+      "use strict";
+      this.keymap = [];
+
+      class Paddle {
+        constructor(x, y, game) {
+          this.game = game;
+          this.x = x;
+          this.y = y;
+          this.Pwidth = 200;
+          this.Pheight = 15;
+        }
+
+        keyDown(e) {
+          keymap[e.keyCode] = true;
+        }
+
+        keyUp(e) {
+          keymap[e.keyCode] = false;
+        }
+
+        update() {
+          ctx.clearRect(0, 0, 700, 500);
+          ctx.fillStyle = "rgba(50,0,0,0.3)";
+          ctx.fillRect(this.x, this.y, this.Pwidth, this.Pheight);
+          if (keymap[37]) {
+            this.x -= 10;
+          } else if (keymap[39]) {
+            this.x += 10;
+          }
+        }
+      }
+
+      class Ball {
+        constructor(x, y, game, paddle) {
+          this.paddle = paddle;
+          this.game = game;
+          this.x = x;
+          this.y = y;
+          this.speed = 5;
+          this.dx = this.speed;
+          this.dy = this.speed;
+          this.radius = 10;
+        }
+
+        makeBall() {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.radius, 0, 3 * Math.PI);
+          ctx.stroke();
+          ctx.closePath();
+        }
+
+        update() {
+          this.makeBall();
+          //paddle
+          if (
+            this.x + this.radius >= this.paddle.x &&
+            this.x - this.radius <= this.paddle.x + this.paddle.Pwidth &&
+            this.y + this.radius >= this.paddle.y &&
+            this.y - this.radius <= this.paddle.y + this.paddle.Pheight
+          ) {
+            this.dy = -this.speed;
+            // this.radius += 5
+          }
+
+          if (this.x + this.radius >= 700) {
+            this.dx = -this.speed;
+          } else if (this.x - this.radius < 0) {
+            this.dx = this.speed;
+          } else if (this.y - this.radius < 0) {
+            this.dy = this.speed;
+          } else if (this.y + this.radius >= 500) {
+            clearInterval(timerId);
+          }
+
+          this.x += this.dx;
+          this.y += this.dy;
+        }
+      }
+
+      class Block {
+        constructor(ball) {
+          this.stars = [];
+          this.starslength = 9;
+          for (let i = 0; i < this.starslength; i++) {
+            const randomX = Math.floor(Math.random() * 400) + 50;
+            const randomY = Math.floor(Math.random() * 400) + 50;
+
+            this.stars.push(new Star(1000, randomY));
+          }
+          this.blocks = [];
+          this.ball = ball;
+          this.width = 75;
+          this.height = 20;
+          this.padding = 30;
+          this.row = 3;
+          this.col = 6;
+          for (let r = 0; r < this.row; r++) {
+            this.blocks[r] = [];
+            for (let c = 0; c < this.col; c++) {
+              this.blocks[r][c] = { x: 0, y: 0, s: 1 };
+            }
+          }
+        }
+
+        // star
+        setup() {
+          this.stars.forEach((element) => {
+            if (element.s === 1) {
+              element.update();
+            }
+            if (
+              this.ball.x  >= element.x &&
+              this.ball.x  <= element.x + 50 &&
+              this.ball.y  >= element.y &&
+              this.ball.y  <= element.y + 50
+            ) {
+              const fil = this.stars.filter((v) => {
+                return v.s === 1;
+              });
+              if (fil.length != this.starslength) {
+                // this.ball.speed ++
+                this.ball.radius += 1;
+              }
+              element.s = 0;
+              this.starslength--;
+            }
+          });
+        }
+
+        //blocks
+        makeBlock() {
+          this.setup();
+          for (let r = 0; r < this.row; r++) {
+            for (let c = 0; c < this.col; c++) {
+              let b = this.blocks[r][c];
+              if (this.blocks[r][c].s === 1) {
+                let brickX = c * (this.width + this.padding) + this.padding;
+                let brickY = r * (this.height + this.padding) + this.padding;
+                this.blocks[r][c].x = brickX;
+                this.blocks[r][c].y = brickY;
+                ctx.beginPath();
+                ctx.rect(brickX, brickY, this.width, this.height);
+                ctx.fillStyle = "#0095DD";
+                ctx.fill();
+                ctx.closePath();
+                if (
+                  this.ball.x + this.ball.radius > b.x &&
+                  this.ball.x - this.ball.radius < b.x + this.width &&
+                  this.ball.y + this.ball.radius > b.y &&
+                  this.ball.y - this.ball.radius < b.y + this.height
+                ) {
+                  this.blocks[r][c].s = 0;
+                  this.ball.dx = -this.ball.speed;
+                  this.ball.dy = -this.ball.speed;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      class Star {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+          this.s = 1;
+          // setInterval(this.update.bind(this), 50);
+        }
+
+        update() {
+          ctx.drawImage(star, this.x, this.y, 50, 50);
+          this.x -= 10;
+          if (this.x < 0) {
+            this.x = 1000;
+          }
+        }
+      }
+
+      let ctx;
+      let timerId;
+      class Game {
+        constructor() {
+          this.paddle = new Paddle(200, 460, this);
+          this.ball = new Ball(200, 300, this, this.paddle);
+          this.block = new Block(this.ball);
+          onkeydown = this.paddle.keyDown;
+          onkeyup = this.paddle.keyUp;
+          ctx = document.getElementById("canvas").getContext("2d");
+          timerId = setInterval(this.tick.bind(this), 50);
+        }
+
+        tick() {
+          this.paddle.update();
+          this.ball.update();
+          this.block.makeBlock();
+        }
+      }
+
+      new Game();
+    </script>
+  </body>
+</html>
